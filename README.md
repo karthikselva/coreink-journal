@@ -11,6 +11,12 @@ Plug it into the PC, run the sync, unplug, read. Works best with notes written b
 | Home | weekday, date, title, six life-area meters | previous / next day | → Summary | (already home) |
 | Summary | the day's highlights | page | → Entry | → Home |
 | Entry | the whole journal entry | page | next page | → Home |
+| Streak | selected day, 13-week punch card, current / longest streak and total days | previous / next day (up and down each week's column, then on to the next column) | open the selected day | → Home |
+
+- **Hold the wheel** up or down to keep going: it starts repeating after 0.4 s and speeds up after 3 s. Works on every screen (days, pages, the streak cursor).
+- The **top button** toggles between the day you're on and the Streak screen, from any screen.
+- Streak punch card: one column per week, Monday at the top, newest week on the right. Filled = journaled, outline = missed. A day counts if it has any entry; if today has none yet, the current streak counts up to yesterday.
+- "Today" comes from the RTC, which every sync sets to the PC's local time. Before the first sync after flashing, the latest entry stands in for today.
 
 - Opens on the most recent day.
 - After 2 minutes without input it powers off. The e-ink keeps the last screen, and the side button turns it back on.

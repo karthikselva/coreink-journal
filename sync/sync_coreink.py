@@ -28,7 +28,7 @@ import sys
 import time
 import unicodedata
 import zlib
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 ASSISTANT_SETTINGS = Path(".obsidian") / "plugins" / "journal-scroll-assistant" / "data.json"
@@ -214,6 +214,18 @@ def ask(ser, line: str, ok: re.Pattern, timeout=1.5, tries=12):
     return None
 
 
+def set_clock(ser):
+    """Set the CoreInk's RTC to this PC's local time, so the streak screen knows what "today" is."""
+    now = int(time.time())
+    offset = int(datetime.now().astimezone().utcoffset().total_seconds())
+    signed = f"{now} {offset}"
+    r = ask(ser, f"T {signed} {zlib.crc32(signed.encode()) & 0xFFFFFFFF:08x}", re.compile(r"KT"), tries=5)
+    if r and not isinstance(r, str):
+        print("Clock set.")
+    else:
+        print("Couldn't set the clock (older firmware?); the streak screen will count from the latest entry.")
+
+
 def send(port, data: bytes, chunk=768):
     import serial
     ser = serial.Serial()
@@ -228,6 +240,7 @@ def send(port, data: bytes, chunk=768):
         if not pong or isinstance(pong, str):
             sys.exit(f"The CoreInk on {port} didn't answer. Is it switched on and running the journal firmware?")
         print(f"Connected on {port}: the CoreInk has {pong.group(1)} days now.")
+        set_clock(ser)
         t0 = time.time()
         crc = zlib.crc32(data) & 0xFFFFFFFF
         for attempt in range(3):
