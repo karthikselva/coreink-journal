@@ -18,8 +18,9 @@ Plug it into the PC, run the sync, unplug, read. Works best with notes written b
 - Streak punch card: one column per week, Monday at the top, newest week on the right. Filled = journaled, outline = missed. A day counts if it has any entry; if today has none yet, the current streak counts up to yesterday.
 - "Today" comes from the RTC, which every sync sets to the PC's local time. Before the first sync after flashing, the latest entry stands in for today.
 
-- Opens on the most recent day.
-- After 2 minutes without input it powers off. The e-ink keeps the last screen, and the side button turns it back on.
+- Built to last on battery: after 10 s without input it switches itself off completely (the e-ink keeps the last screen without power), and the CPU runs at 80 MHz while on. No Wi-Fi or Bluetooth is ever started.
+- The side button turns it back on, on the same screen, day and page it was showing. After a sync it opens on the most recent day.
+- On USB power it can't switch off, so it deep-sleeps instead and wakes on a **wheel press**. Press the wheel just before syncing (the script keeps trying for about 30 s).
 - Life-area meters: 3 bars focused, 2 some, 1 neglected, 0 not today.
 
 ## Build and flash (PlatformIO)

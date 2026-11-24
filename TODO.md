@@ -1,5 +1,9 @@
 # TODO
 
+- **Flash and test the battery-saving build.** It's in the code (power off after 10 s, CPU at 80 MHz,
+  resume on the same screen / day / page / streak cursor via NVS) but not on the device yet: flashing
+  failed on the noisy USB link. Flash while holding the side power button, then check: it switches off
+  after 10 s, the side button brings back the same screen, and after a sync it opens on the newest day.
 - **Wi-Fi sync from an Obsidian plugin (iPad / phone / desktop).** iOS plugins can't use Bluetooth or
   USB serial, only HTTP, so: a sync mode on the device that turns Wi-Fi on (joins the home network as
   `coreink.local`, or opens its own hotspot) and runs a small HTTP server; an Obsidian plugin that builds

@@ -11,7 +11,8 @@
 // Top button: toggles between the day you're on and STREAK.
 // Holding the wheel up or down keeps going (after 0.4 s; faster after 3 s), in every screen.
 // After IDLE_MS without input the device powers off (the e-ink keeps showing the last screen);
-// press the side button to turn it on again. It opens on the most recent day.
+// press the side button to turn it on again. It comes back on the same screen, day and page (saved
+// to NVS on the way down); a fresh journal from a sync opens on the most recent day.
 //
 // Data: /journal.tsv on LittleFS, one day per line, oldest first, written by sync/sync_coreink.py:
 //   iso \t date \t weekday \t title \t areas \t highlights \t body
@@ -32,6 +33,7 @@
 
 #include <M5Unified.h>
 #include <LittleFS.h>
+#include <Preferences.h>
 #include <mbedtls/base64.h>
 #include <algorithm>
 #include <vector>
@@ -44,7 +46,8 @@ static constexpr int PIN_PWR = 27;    // side power button (readable while runni
 static constexpr int PIN_TOP = 5;     // top (EXT) button
 static constexpr int PIN_HOLD = 12;   // keep HIGH to stay powered on battery
 
-static constexpr uint32_t IDLE_MS = 120000;     // power off after 2 minutes without input
+static constexpr uint32_t IDLE_MS = 10000;      // power off after 10 s without input (it resumes where it was)
+static constexpr uint32_t CPU_MHZ = 80;         // plenty for this; about half the current of 240 MHz
 static constexpr int FULL_REFRESH_EVERY = 10;   // partial updates between full (ghost-clearing) refreshes
 
 static const char* DATA_PATH = "/journal.tsv";
@@ -645,9 +648,50 @@ static void onTop() {
 }
 
 // ---------------------------------------------------------------- power
+// What's on screen, kept in NVS across power-offs so a wake carries on from there.
+static void saveState() {
+  Preferences p;
+  if (!p.begin("ui", false)) return;
+  p.putUChar("view", (uint8_t)view);
+  p.putInt("day", dayIndex);
+  p.putInt("page", page);
+  p.putInt("cursor", cursorDay);
+  p.putInt("gridEnd", gridEndWeek);
+  p.putUInt("days", offsets.size());  // a different journal makes the rest meaningless
+  p.end();
+}
+
+static bool restoreState() {
+  if (offsets.empty()) return false;
+  Preferences p;
+  if (!p.begin("ui", true)) return false;
+  bool ok = p.getUInt("days", 0) == offsets.size() && p.getUChar("view", 255) <= STREAK;
+  if (ok) {
+    view = (View)p.getUChar("view", HOME);
+    dayIndex = constrain(p.getInt("day", 0), 0, (int)offsets.size() - 1);
+    page = max(0, p.getInt("page", 0));
+    cursorDay = p.getInt("cursor", 0);
+    gridEndWeek = p.getInt("gridEnd", 0);
+  }
+  p.end();
+  if (!ok) return false;
+  dayLoaded = loadDay(dayIndex, day);
+  if (view == SUMMARY || view == ARTICLE) prepareText();  // also clamps the page
+  if (view == STREAK) {
+    if (dayNums.front() == NO_DAY) {
+      view = HOME;
+    } else {
+      cursorDay = constrain(cursorDay, dayNums.front(), todayNum());
+      keepCursorVisible();
+    }
+  }
+  return true;
+}
+
 static void powerOff() {
   // The e-ink keeps the last image. On battery, releasing HOLD cuts power; on USB power the chip
   // stays up, so it deep-sleeps instead and wakes on a wheel press.
+  saveState();
   Serial.println("SLEEP");
   Serial.flush();
   esp_sleep_enable_ext0_wakeup(GPIO_NUM_38, 0);
@@ -795,6 +839,7 @@ static void pollSerial() {
 void setup() {
   pinMode(PIN_HOLD, OUTPUT);
   digitalWrite(PIN_HOLD, HIGH);  // stay on after the power button is released
+  setCpuFrequencyMhz(CPU_MHZ);
 
   Serial.setRxBufferSize(4096);
   Serial.begin(115200);
@@ -815,8 +860,9 @@ void setup() {
   buildIndex();
   Serial.printf("COREINK-JOURNAL READY 2 %u\n", (unsigned)offsets.size());
 
-  // Opens on the most recent day.
-  showDay(offsets.empty() ? 0 : offsets.size() - 1, true);
+  // Back where it was when it powered off; otherwise the most recent day.
+  if (restoreState()) render(true);
+  else showDay(offsets.empty() ? 0 : offsets.size() - 1, true);
 
   // The power button is usually still held from switching on: don't read that as "back".
   btnPwr.down = digitalRead(PIN_PWR) == LOW;
