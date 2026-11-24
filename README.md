@@ -67,6 +67,15 @@ If flashing fails with "Invalid head of packet (0xE0)", "Serial data stream stop
 `upload_speed`, a different cable or USB port (preferably one directly on the PC, not a hub),
 and the latest CP210x / CH9102 driver. The web flasher above is a handy cross-check from another computer.
 
+What finally worked on a unit with a noisy link: **hold the side power button for the whole upload**.
+While flashing, no firmware is running to hold the CoreInk's power latch (G12), so the chip can lose
+power mid-transfer ("The chip stopped responding"). Writing the image in small pieces
+(`esptool.py --no-stub write_flash <offset> <16 KB piece>`), retrying each piece until it verifies,
+gets through even when whole uploads keep failing.
+
+The sync itself is built for such a link: 768-byte base64 chunks, each with its own CRC-32 and
+resent until acknowledged, then a whole-file CRC before the new journal replaces the old one.
+
 ## License
 
 MIT, see [LICENSE](LICENSE).
